@@ -2,6 +2,8 @@ import json
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
+VALID_SEVERITIES = {"low", "medium", "high", "critical"}
+
 from reliability.risk_assessor import assess_risk
 
 
@@ -185,19 +187,23 @@ class BugHoundAgent:
 
         return None
 
-    def _normalize_issues(self, arr: List[Any]) -> List[Dict[str, str]]:
+    def _normalize_issues(self, arr: List[Any]) -> Optional[List[Dict[str, str]]]:
         issues: List[Dict[str, str]] = []
         for item in arr:
             if not isinstance(item, dict):
                 continue
-            issues.append(
-                {
-                    "type": str(item.get("type", "Issue")),
-                    "severity": str(item.get("severity", "Unknown")),
-                    "msg": str(item.get("msg", "")).strip(),
-                }
-            )
-        return issues
+            issue_type = str(item.get("type", "")).strip()
+            severity = str(item.get("severity", "")).strip()
+            msg = str(item.get("msg", "")).strip()
+
+            if not issue_type or not msg:
+                continue
+            if severity.lower() not in VALID_SEVERITIES:
+                severity = "Unknown"
+
+            issues.append({"type": issue_type, "severity": severity, "msg": msg})
+
+        return issues if issues else None
 
     def _try_json_loads(self, s: str) -> Any:
         try:
